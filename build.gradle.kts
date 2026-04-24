@@ -5,8 +5,8 @@ plugins {
     kotlin("jvm") version "1.9.23"
 }
 
-group = "com.zenmo"
-version = "0.1"
+group = "energy.lux"
+version = "0.2"
 
 repositories {
     mavenCentral()

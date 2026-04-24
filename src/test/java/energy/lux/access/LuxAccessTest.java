@@ -1,0 +1,47 @@
+package energy.lux.access;
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+import static energy.lux.access.LuxAccessKt.hasRole;
+
+/**
+ * Verify functionality using a JWT of a test Keycloak environment.
+ */
+public class LuxAccessTest {
+    // from https://keycloak.zenmo.com/realms/testrealm/protocol/openid-connect/certs
+    public String jwk = """
+        {
+            "kid": "n-X5BeXFe6pIXhDBsDu2mQ2VYc23RSZCFRU5Y6IuzC8",
+            "kty": "OKP",
+            "alg": "EdDSA",
+            "use": "sig",
+            "crv": "Ed25519",
+            "x": "ILokSbk8EKH-Q1aWo_TguuDRccoSVfEbmGSbm5gcn5I"
+        }
+    """;
+
+    // expired token with role "dordrecht_view_company_details"
+    public String expiredDordrechtToken = "eyJhbGciOiJFZERTQSIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuLVg1QmVYRmU2cElYaERCc0R1Mm1RMlZZYzIzUlNaQ0ZSVTVZNkl1ekM4In0.eyJleHAiOjE3NzcwNDQyMDIsImlhdCI6MTc3NzA0MzkwMiwiYXV0aF90aW1lIjoxNzc3MDQzNzM1LCJqdGkiOiIyYWE3Y2VlNy1kYjM5LTk5ODMtYTZmZS03ZjI2NTZiMzNmMDMiLCJpc3MiOiJodHRwczovL2tleWNsb2FrLnplbm1vLmNvbS9yZWFsbXMvdGVzdHJlYWxtIiwiYXVkIjoibHV4X2FjY2Vzc19yb2xlcyIsInN1YiI6Ijg3NzRiYzQ0LWY5MzYtNGJmOC1hMjZiLTk1MDkyYzVlNzkzNyIsInR5cCI6IklEIiwiYXpwIjoibHV4X2FjY2Vzc19yb2xlcyIsInNpZCI6InZjd0hld0M0d3lmWmtQOVI4VFB5T2YzOCIsImF0X2hhc2giOiJVVGxnd05GaS1YMFhrZUM5eURNUXlkZkg4NmZVMlZuODdLMm5Gdm9rY0xNIiwiYWNyIjoiMCIsInJlYWxtX3JvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwiTWFnSWV0cyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy10ZXN0cmVhbG0iXSwicmVzb3VyY2VfYWNjZXNzIjp7Imx1eF9hY2Nlc3Nfcm9sZXMiOnsicm9sZXMiOlsiZG9yZHJlY2h0X3ZpZXdfY29tcGFueV9kZXRhaWxzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6ImVyaWsiLCJlbWFpbCI6ImVyaWtAZXZhbnYubmwifQ.pQXotc7ey4bj4Yl_Wor90L-6p90GhmdASBOAl-FySue3bLXvayhmQ0u0bcJBLA5Fcu7EC2kxdWKHHgB3-GVFBw";
+
+    // token with role "dordrecht_view_company_details" valid into year 2045
+    public String validDordrechtToken = "eyJhbGciOiJFZERTQSIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuLVg1QmVYRmU2cElYaERCc0R1Mm1RMlZZYzIzUlNaQ0ZSVTVZNkl1ekM4In0.eyJleHAiOjIzODE4NDQxNjgsImlhdCI6MTc3NzA0NDE2OCwiYXV0aF90aW1lIjoxNzc3MDQzNzM1LCJqdGkiOiIzNDlkMGEyNy0xYmFlLWJmZjItNzM4MS0yYzFhMDUxNmNlODMiLCJpc3MiOiJodHRwczovL2tleWNsb2FrLnplbm1vLmNvbS9yZWFsbXMvdGVzdHJlYWxtIiwiYXVkIjoibHV4X2FjY2Vzc19yb2xlcyIsInN1YiI6Ijg3NzRiYzQ0LWY5MzYtNGJmOC1hMjZiLTk1MDkyYzVlNzkzNyIsInR5cCI6IklEIiwiYXpwIjoibHV4X2FjY2Vzc19yb2xlcyIsInNpZCI6InZjd0hld0M0d3lmWmtQOVI4VFB5T2YzOCIsImF0X2hhc2giOiJIeGg4MHl2ZklHTHd5Y25ZN3lSTDJ2RjlmT1FxRTBZZ3V5Vy0wYzhYekNjIiwiYWNyIjoiMCIsInJlYWxtX3JvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwiTWFnSWV0cyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy10ZXN0cmVhbG0iXSwicmVzb3VyY2VfYWNjZXNzIjp7Imx1eF9hY2Nlc3Nfcm9sZXMiOnsicm9sZXMiOlsiZG9yZHJlY2h0X3ZpZXdfY29tcGFueV9kZXRhaWxzIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6ImVyaWsiLCJlbWFpbCI6ImVyaWtAZXZhbnYubmwifQ.3vSY9wiS0ZJb3uWJPrU0SHt5xY_sofUwfj9irJ-IyBE7ql9V-tbk0oiV1IYJcYUtG6_791wjdUw4m28mzrocDQ";
+
+    // token with role "papendrecht_view_company_details" valid into year 2045
+    public String validPapendrechtToken = "eyJhbGciOiJFZERTQSIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuLVg1QmVYRmU2cElYaERCc0R1Mm1RMlZZYzIzUlNaQ0ZSVTVZNkl1ekM4In0.eyJleHAiOjIzODE4NDQ1MDEsImlhdCI6MTc3NzA0NDUwMSwiYXV0aF90aW1lIjoxNzc3MDQzNzM1LCJqdGkiOiI2OGRlNjlhMC1jZGMxLTY0MmItYTk5MC01MDdmOThiNTQ2ZGMiLCJpc3MiOiJodHRwczovL2tleWNsb2FrLnplbm1vLmNvbS9yZWFsbXMvdGVzdHJlYWxtIiwiYXVkIjoibHV4X2FjY2Vzc19yb2xlcyIsInN1YiI6Ijg3NzRiYzQ0LWY5MzYtNGJmOC1hMjZiLTk1MDkyYzVlNzkzNyIsInR5cCI6IklEIiwiYXpwIjoibHV4X2FjY2Vzc19yb2xlcyIsInNpZCI6InZjd0hld0M0d3lmWmtQOVI4VFB5T2YzOCIsImF0X2hhc2giOiJhX2VkS1IxYUhNekJCX0ZVa3QwVVFpOTV5bkExSVFWbXduNkNhMGNBZHNJIiwiYWNyIjoiMCIsInJlYWxtX3JvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwiTWFnSWV0cyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy10ZXN0cmVhbG0iXSwicmVzb3VyY2VfYWNjZXNzIjp7Imx1eF9hY2Nlc3Nfcm9sZXMiOnsicm9sZXMiOlsicGFwZW5kcmVjaHRfdmlld19jb21wYW55X2RldGFpbHMiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZXJpayIsImVtYWlsIjoiZXJpa0BldmFudi5ubCJ9.Lfh-J710wExN1uig2NgKreXT5Md-IcDkyVGNCaprOAAapIqkJGYFN9aBqnyuH6BAJl7QXtO0nLRWSm4C-ddRDQ";
+
+    // token valid into year 2045 but no claim lux_access_roles.lux_access_roles
+    public String validTokenWithNoRoles = "eyJhbGciOiJFZERTQSIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJuLVg1QmVYRmU2cElYaERCc0R1Mm1RMlZZYzIzUlNaQ0ZSVTVZNkl1ekM4In0.eyJleHAiOjIzODE4NDQ1NzMsImlhdCI6MTc3NzA0NDU3MywiYXV0aF90aW1lIjoxNzc3MDQzNzM1LCJqdGkiOiI2OWZiNGE0MS1hYTI0LTE2NGYtMGUwMS1hODg3YjEzOGIyNDMiLCJpc3MiOiJodHRwczovL2tleWNsb2FrLnplbm1vLmNvbS9yZWFsbXMvdGVzdHJlYWxtIiwiYXVkIjoibHV4X2FjY2Vzc19yb2xlcyIsInN1YiI6Ijg3NzRiYzQ0LWY5MzYtNGJmOC1hMjZiLTk1MDkyYzVlNzkzNyIsInR5cCI6IklEIiwiYXpwIjoibHV4X2FjY2Vzc19yb2xlcyIsInNpZCI6InZjd0hld0M0d3lmWmtQOVI4VFB5T2YzOCIsImF0X2hhc2giOiJMY0I0VDNWdUVHQkdkSDRQUXBnaTVXQ0dNMHpnU19lcjBTWFBmaUNlVnBrIiwiYWNyIjoiMCIsInJlYWxtX3JvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwiTWFnSWV0cyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy10ZXN0cmVhbG0iXSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZXJpayIsImVtYWlsIjoiZXJpa0BldmFudi5ubCJ9.wmBXBeE4TLZH8oj5rkAGCNS2uxdWuUvI0Cs_8DygRLjDUUSEsJlgdazCUS3twmwfnzRAYeH9BRXWhmKZrLw3BA";
+
+    @Test
+    public void testHasRole() {
+        assertTrue(hasRole("dordrecht_view_company_details", validDordrechtToken, jwk));
+        assertFalse(hasRole("dordrecht_view_company_details", validPapendrechtToken, jwk));
+        assertFalse(hasRole("dordrecht_view_company_details", validTokenWithNoRoles, jwk));
+
+        assertThrows(
+                "Access Token has expired",
+                LuxAccessException.class,
+                () -> hasRole("dordrecht_view_company_details", expiredDordrechtToken, jwk)
+        );
+    }
+}

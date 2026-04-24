@@ -1,4 +1,4 @@
-package com.zenmo.zeroaccess;
+package energy.lux.access;
 
 import com.nimbusds.jose.JWSVerifier
 import com.nimbusds.jose.crypto.Ed25519Verifier
@@ -32,10 +32,10 @@ const val defaultJwk = """
 fun hasRole(role: String, jwt: String, jwk: String? = null): Boolean {
     try {
         return hasRoleImpl(role, jwt, jwk)
-    } catch (e: ZeroAccessException) {
+    } catch (e: LuxAccessException) {
         throw e
     } catch (e: Throwable) {
-        throw ZeroAccessException("Invalid ID token: ${e.message}", e)
+        throw LuxAccessException("Invalid ID token: ${e.message}", e)
     }
 }
 
@@ -44,18 +44,20 @@ private fun hasRoleImpl(role: String, jwt: String, jwk: String?): Boolean {
     val signedJwt = SignedJWT.parse(jwt)
 
     if (signedJwt.jwtClaimsSet.expirationTime.before(Date())) {
-        throw ZeroAccessException("ID Token has expired")
+        throw LuxAccessException("ID Token has expired")
     }
 
     val verifier: JWSVerifier = Ed25519Verifier(key)
     val isValid = verifier.verify(signedJwt.header, signedJwt.signingInput, signedJwt.signature)
     if (!isValid) {
-        throw ZeroAccessException("ID Token does not comply with public key")
+        throw LuxAccessException("ID Token does not comply with public key")
     }
 
-    val realmRoles = signedJwt.jwtClaimsSet.getListClaim("realm_roles") ?: emptyList();
+    val resourceAccess = signedJwt.jwtClaimsSet.getJSONObjectClaim("resource_access")
+    val luxAccessRoles = resourceAccess["lux_access_roles"] as Map<String, List<String>>?
+    val roles = luxAccessRoles?.get("roles") ?: emptyList()
 
-    return realmRoles.contains(role)
+    return roles.contains(role)
 }
 
 private fun resolveJwk(jwk: String?): String {
