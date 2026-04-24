@@ -21,6 +21,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.23")
 }
 
+tasks.shadowJar {
+    minimize()
+}
+
 tasks.test {
 //    useJUnitPlatform()
 }
